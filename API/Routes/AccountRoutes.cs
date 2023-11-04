@@ -14,15 +14,14 @@ public static class AccountRoutes
 {
     public static void MapIdentityRoutes(this IEndpointRouteBuilder app)
     {
-        var account=app.MapGroup("/account");
+        var account=app.MapGroup("/api/account");
         account.MapPost("/login", 
             async (
                 [FromBody] LoginRequest req,
                 [FromServices] BloggingDbContext dbContext, 
-                [FromServices] SignInManager<ApplicationUser> signInManager,
-                [FromServices] HttpContext ctx) =>
+                [FromServices] SignInManager<ApplicationUser> signInManager,HttpContext ctx) =>
         {
-            if(ctx.User.Identity!=null)
+            if(ctx.User.Identity!=null && ctx.User.Identity.IsAuthenticated)
             {
                 return Results.BadRequest("already signed in");
             }
@@ -58,7 +57,7 @@ public static class AccountRoutes
                 return Results.Unauthorized();
             }
         }).AllowAnonymous();
-        account.MapGet("/logout", async ([FromServices] SignInManager<ApplicationUser> signInManager) =>
+        account.MapPost("/logout", async ([FromServices] SignInManager<ApplicationUser> signInManager) =>
         {
             await signInManager.SignOutAsync();
             return Results.Ok();

@@ -1,16 +1,12 @@
 using API.Data;
 using API.Routes;
 using API.Services;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<BloggingDbContext>(x=>x.UseNpgsql(builder.Configuration.GetConnectionString("postgres")));
@@ -51,7 +47,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.SlidingExpiration = true;
 });
-
+builder.Services.AddSpaStaticFiles(configuration =>
+{
+    configuration.RootPath = "dist";
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -63,13 +62,18 @@ if (app.Environment.IsDevelopment())
 
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
-// app.UseAuthentication();
-// app.UseAuthorization();
 
 app.MapIdentityRoutes();
-app.MapGet("users",async (UserManager<ApplicationUser> userManager)=>Results.Ok(await userManager.Users.ToListAsync()));
+app.MapGet("/api/users",async (UserManager<ApplicationUser> userManager)=>Results.Ok(await userManager.Users.ToListAsync()));
 
-app.MapGet("/", (HttpContext context) => context.Response.WriteAsync("Hello World"));
+app.MapWhen(x=>!x.Request.Path.StartsWithSegments("/api"),appBuilder=>{
+    appBuilder.UseSpaStaticFiles();
+    appBuilder.UseSpa(builder=>{
+        if(app.Environment.IsDevelopment())
+        {
+            builder.UseProxyToSpaDevelopmentServer("http://localhost:5173/");
+        }   
+    });
+});
 
 app.Run();
